@@ -1,0 +1,12 @@
+{
+  "name": "axax77",
+  "version": "1.0.0",
+  "private": true,
+  "description": "원스톱 프롬프트 생성기 (미드저니 · GPT) - static HTML app",
+  "scripts": {
+    "lint": "htmlhint \"*.html\""
+  },
+  "devDependencies": {
+    "htmlhint": "^1.1.4"
+  }
+}
