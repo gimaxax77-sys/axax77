@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>방치형 기사 RPG</title>
+<style>
+  :root{
+    --bg:#12101a;
+    --bg2:#1b1826;
+    --panel:#241f33;
+    --panel2:#2d2740;
+    --line:#3a3350;
+    --ink:#efeaf7;
+    --sub:#a79fc0;
+    --gold:#f2c94c;
+    --hp:#e05563;
+    --xp:#4ea1f2;
+    --soul:#b98cff;
+    --accent:#ff8a5b;
+    --good:#5bd6a0;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:radial-gradient(120% 80% at 50% 0%, #241d38 0%, var(--bg) 60%);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;
+    line-height:1.4;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .app{max-width:520px;margin:0 auto;padding:10px 12px 24px;min-height:100%;}
+
+  /* Top bar */
+  .topbar{
+    display:flex;gap:8px;flex-wrap:wrap;
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:10px 12px;margin-bottom:10px;
+  }
+  .stat{flex:1;min-width:80px;text-align:center;}
+  .stat .label{font-size:10px;letter-spacing:.08em;color:var(--sub);text-transform:uppercase;}
+  .stat .val{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:1px;}
+  .val.gold{color:var(--gold);}
+  .val.soul{color:var(--soul);}
+  .val.stage{color:var(--accent);}
+
+  /* Battle arena */
+  .arena{
+    position:relative;
+    background:linear-gradient(180deg,#241d38 0%, #181428 100%);
+    border:1px solid var(--line);border-radius:16px;
+    height:250px;overflow:hidden;margin-bottom:10px;
+  }
+  .ground{position:absolute;left:0;right:0;bottom:0;height:56px;
+    background:linear-gradient(180deg, rgba(90,70,130,.25), rgba(10,8,18,.6));
+    border-top:1px solid rgba(255,255,255,.06);}
+  .stageTag{
+    position:absolute;top:8px;left:0;right:0;text-align:center;
+    font-size:11px;color:var(--sub);letter-spacing:.1em;
+  }
+  .fighter{position:absolute;bottom:36px;width:120px;height:150px;}
+  .fighter svg{width:100%;height:100%;overflow:visible;}
+  #heroWrap{left:22px;}
+  #enemyWrap{right:22px;}
+  .hpwrap{position:absolute;bottom:150px;width:100px;left:50%;transform:translateX(-50%);}
+  .hpbar{height:8px;border-radius:6px;background:#0d0b16;border:1px solid var(--line);overflow:hidden;}
+  .hpfill{height:100%;width:100%;background:linear-gradient(90deg,#e05563,#ff8a8a);transition:width .12s linear;}
+  .hpfill.enemy{background:linear-gradient(90deg,#c14be0,#ff6ad5);}
+  .hptext{font-size:9px;text-align:center;color:var(--sub);margin-top:2px;font-variant-numeric:tabular-nums;}
+  .enemyName{position:absolute;bottom:172px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;white-space:nowrap;}
+  .boss .enemyName{color:var(--gold);}
+
+  /* attack animation */
+  @keyframes lungeR{0%{transform:translateX(0);}40%{transform:translateX(46px);}100%{transform:translateX(0);}}
+  @keyframes lungeL{0%{transform:translateX(0);}40%{transform:translateX(-46px);}100%{transform:translateX(0);}}
+  .attackHero{animation:lungeR .28s ease;}
+  .attackEnemy{animation:lungeL .28s ease;}
+  @keyframes hit{0%,100%{filter:none;}30%{filter:brightness(2.2) drop-shadow(0 0 6px #fff);}}
+  .hitFlash{animation:hit .2s ease;}
+  @keyframes deathfx{0%{opacity:1;transform:scale(1) rotate(0);}100%{opacity:0;transform:scale(.4) rotate(25deg);}}
+  .dying{animation:deathfx .35s ease forwards;}
+  @keyframes spawnfx{0%{opacity:0;transform:translateY(-14px) scale(.7);}100%{opacity:1;transform:translateY(0) scale(1);}}
+  .spawning{animation:spawnfx .3s ease;}
+
+  /* floating numbers */
+  .float{position:absolute;font-weight:900;font-size:15px;pointer-events:none;z-index:5;
+    text-shadow:0 1px 2px #000;font-variant-numeric:tabular-nums;}
+  @keyframes floatUp{0%{opacity:1;transform:translateY(0);}100%{opacity:0;transform:translateY(-42px);}}
+  .float{animation:floatUp .8s ease forwards;}
+  .float.crit{font-size:20px;color:#fff;}
+  .float.gold{color:var(--gold);}
+  .float.enemyDmg{color:#ff9a9a;}
+  .float.heroDmg{color:#ffd76b;}
+
+  /* boss timer */
+  .bossTimer{position:absolute;top:26px;left:50%;transform:translateX(-50%);
+    font-size:12px;font-weight:800;color:var(--gold);display:none;}
+  .bossTimer.show{display:block;}
+
+  /* progress to boss */
+  .killprog{display:flex;gap:4px;justify-content:center;margin:-2px 0 10px;}
+  .pip{width:14px;height:6px;border-radius:3px;background:var(--panel2);border:1px solid var(--line);}
+  .pip.on{background:var(--accent);border-color:var(--accent);}
+  .pip.boss{width:20px;background:var(--gold);border-color:var(--gold);opacity:.35;}
+  .pip.boss.on{opacity:1;}
+
+  /* tabs */
+  .tabs{display:flex;gap:6px;margin-bottom:8px;}
+  .tab{flex:1;padding:9px 4px;text-align:center;font-size:13px;font-weight:700;
+    background:var(--panel);border:1px solid var(--line);border-radius:11px;color:var(--sub);cursor:pointer;}
+  .tab.active{background:var(--panel2);color:var(--ink);border-color:var(--accent);}
+
+  .page{display:none;}
+  .page.active{display:block;}
+
+  /* upgrade cards */
+  .card{
+    display:flex;align-items:center;gap:10px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:10px 12px;margin-bottom:8px;
+  }
+  .card .ic{width:38px;height:38px;flex:none;border-radius:9px;background:var(--panel2);
+    display:flex;align-items:center;justify-content:center;font-size:20px;}
+  .card .body{flex:1;min-width:0;}
+  .card .name{font-size:14px;font-weight:700;}
+  .card .desc{font-size:11px;color:var(--sub);margin-top:1px;}
+  .card .lv{font-size:11px;color:var(--accent);font-weight:700;}
+  .buy{
+    flex:none;border:none;border-radius:10px;padding:9px 12px;min-width:82px;
+    font-weight:800;font-size:13px;cursor:pointer;color:#191320;
+    background:linear-gradient(180deg,#f7d873,var(--gold));
+    font-variant-numeric:tabular-nums;
+  }
+  .buy:disabled{background:var(--panel2);color:#6c6486;cursor:not-allowed;}
+  .buy small{display:block;font-size:9px;font-weight:600;opacity:.7;}
+
+  .prestigeBox{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;}
+  .prestigeBox h3{margin:0 0 6px;font-size:16px;color:var(--soul);}
+  .prestigeBox p{margin:6px 0;font-size:12.5px;color:var(--sub);}
+  .prestigeBox .gainNum{font-size:30px;font-weight:900;color:var(--soul);margin:6px 0;}
+  .bigbtn{
+    width:100%;border:none;border-radius:12px;padding:14px;margin-top:8px;
+    font-weight:900;font-size:15px;cursor:pointer;color:#fff;
+    background:linear-gradient(180deg,#a06bff,#7b4bd6);
+  }
+  .bigbtn:disabled{background:var(--panel2);color:#6c6486;cursor:not-allowed;}
+  .muted{color:var(--sub);font-size:11.5px;}
+
+  .footer{margin-top:14px;text-align:center;}
+  .footer button{background:none;border:1px solid var(--line);color:var(--sub);
+    border-radius:9px;padding:6px 12px;font-size:11px;cursor:pointer;margin:0 3px;}
+
+  /* offline modal */
+  .modalBg{position:fixed;inset:0;background:rgba(6,4,12,.72);display:none;
+    align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .modalBg.show{display:flex;}
+  .modal{background:var(--panel);border:1px solid var(--accent);border-radius:16px;
+    padding:22px;max-width:340px;width:100%;text-align:center;}
+  .modal h3{margin:0 0 8px;color:var(--accent);}
+  .modal .amt{font-size:26px;font-weight:900;color:var(--gold);margin:8px 0;}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+    padding:8px 16px;font-size:12px;font-weight:600;opacity:0;transition:opacity .25s;z-index:60;pointer-events:none;}
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="stat"><div class="label">골드</div><div class="val gold" id="uiGold">0</div></div>
+    <div class="stat"><div class="label">스테이지</div><div class="val stage" id="uiStage">1</div></div>
+    <div class="stat"><div class="label">기사 Lv</div><div class="val" id="uiLevel">1</div></div>
+    <div class="stat"><div class="label">영혼석</div><div class="val soul" id="uiSoul">0</div></div>
+  </div>
+
+  <div class="arena" id="arena">
+    <div class="ground"></div>
+    <div class="stageTag" id="stageTag">스테이지 1 · 어두운 숲</div>
+    <div class="bossTimer" id="bossTimer">⏳ 30.0s</div>
+
+    <div class="hpwrap" style="left:82px;">
+      <div class="hpbar"><div class="hpfill" id="heroHp"></div></div>
+      <div class="hptext" id="heroHpText">100 / 100</div>
+    </div>
+    <div class="fighter" id="heroWrap"></div>
+
+    <div class="enemyName" id="enemyName" style="right:22px;left:auto;transform:none;">슬라임</div>
+    <div class="hpwrap" style="right:82px;left:auto;transform:none;">
+      <div class="hpbar"><div class="hpfill enemy" id="enemyHp"></div></div>
+      <div class="hptext" id="enemyHpText">20 / 20</div>
+    </div>
+    <div class="fighter" id="enemyWrap"></div>
+  </div>
+
+  <div class="killprog" id="killprog"></div>
+
+  <div class="tabs">
+    <div class="tab active" data-page="upgrades">⚔️ 강화</div>
+    <div class="tab" data-page="prestige">✨ 환생</div>
+    <div class="tab" data-page="info">📊 정보</div>
+  </div>
+
+  <div class="page active" id="page-upgrades"></div>
+
+  <div class="page" id="page-prestige">
+    <div class="prestigeBox">
+      <h3>✨ 환생</h3>
+      <p>모든 골드·강화·스테이지를 초기화하는 대신 <b style="color:var(--soul)">영혼석</b>을 얻습니다.<br>영혼석 1개당 <b>공격력·골드 +5%</b> 영구 증가!</p>
+      <div class="gainNum" id="prestigeGain">+0</div>
+      <p class="muted" id="prestigeReq">스테이지 10 이상부터 환생할 수 있습니다.</p>
+      <button class="bigbtn" id="prestigeBtn" disabled>환생하기</button>
+    </div>
+    <div class="prestigeBox" style="margin-top:10px;text-align:left;">
+      <p class="muted">보유 영혼석 <b id="soulHave" style="color:var(--soul)">0</b>개 · 현재 보너스 <b id="soulBonus" style="color:var(--good)">+0%</b></p>
+      <p class="muted">최고 도달 스테이지: <b id="bestStage">1</b> · 누적 환생 <b id="rebirthCnt">0</b>회</p>
+    </div>
+  </div>
+
+  <div class="page" id="page-info">
+    <div class="prestigeBox" style="text-align:left;">
+      <p class="muted">기사 공격력 <b id="infoAtk" style="color:var(--ink)">0</b> · 최대 체력 <b id="infoHp" style="color:var(--ink)">0</b></p>
+      <p class="muted">공격 속도 <b id="infoSpd" style="color:var(--ink)">1.00</b>회/초 · 치명타 <b id="infoCrit" style="color:var(--ink)">5%</b></p>
+      <p class="muted">골드 획득량 배율 <b id="infoGold" style="color:var(--gold)">×1.0</b></p>
+      <p class="muted">처치한 몬스터 <b id="infoKills" style="color:var(--ink)">0</b>마리</p>
+      <hr style="border:none;border-top:1px solid var(--line);margin:12px 0;">
+      <p class="muted">💤 게임을 꺼도 골드가 쌓입니다 (오프라인 보상, 최대 8시간).<br>진행 상황은 이 브라우저에 자동 저장됩니다.</p>
+    </div>
+    <div class="footer">
+      <button id="resetBtn">전체 초기화</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="modalBg" id="offlineModal">
+  <div class="modal">
+    <h3>💤 다녀오셨군요!</h3>
+    <p class="muted" id="offlineTime">자리를 비운 동안 기사가 싸웠습니다.</p>
+    <div class="amt" id="offlineGold">+0 골드</div>
+    <button class="bigbtn" style="background:linear-gradient(180deg,#f7d873,var(--gold));color:#191320;" id="offlineClose">받기</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- SVG art ---------------- */
+function heroSVG(){
+  return '<svg viewBox="0 0 120 150">'
+    +'<ellipse cx="60" cy="142" rx="34" ry="7" fill="rgba(0,0,0,.35)"/>'
+    /* legs */
+    +'<rect x="48" y="104" width="10" height="30" rx="4" fill="#4a5b8a"/>'
+    +'<rect x="62" y="104" width="10" height="30" rx="4" fill="#3d4d78"/>'
+    /* body armor */
+    +'<path d="M40 62 Q60 52 80 62 L76 108 Q60 116 44 108 Z" fill="#6d7db5"/>'
+    +'<path d="M40 62 Q60 52 80 62 L78 74 Q60 66 42 74 Z" fill="#8b9bd6"/>'
+    /* belt */
+    +'<rect x="44" y="98" width="32" height="7" rx="3" fill="#33406a"/>'
+    /* arm + shield */
+    +'<circle cx="36" cy="86" r="13" fill="#c9a24b"/><circle cx="36" cy="86" r="7" fill="#a5822f"/>'
+    /* sword arm */
+    +'<rect x="80" y="70" width="9" height="30" rx="4" fill="#8b9bd6"/>'
+    +'<rect x="82" y="18" width="6" height="56" rx="3" fill="#dfe6ff"/>'
+    +'<rect x="82" y="18" width="6" height="56" rx="3" fill="url(#blade)"/>'
+    +'<rect x="76" y="70" width="18" height="6" rx="3" fill="#c9a24b"/>'
+    /* head + helm */
+    +'<circle cx="60" cy="42" r="17" fill="#f0cfa8"/>'
+    +'<path d="M43 42 Q60 20 77 42 L77 34 Q60 22 43 34 Z" fill="#8b9bd6"/>'
+    +'<rect x="50" y="40" width="20" height="5" rx="2" fill="#2b3350"/>'
+    +'<path d="M60 25 L60 12" stroke="#c9a24b" stroke-width="3"/><circle cx="60" cy="10" r="4" fill="#e05563"/>'
+    +'<defs><linearGradient id="blade" x1="0" y1="0" x2="1" y2="0">'
+    +'<stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#9fb0e0"/></linearGradient></defs>'
+    +'</svg>';
+}
+
+/* enemy palette-based procedural shapes */
+function enemySVG(kind){
+  var s='<svg viewBox="0 0 120 150"><ellipse cx="60" cy="142" rx="32" ry="7" fill="rgba(0,0,0,.35)"/>';
+  if(kind==='slime'){
+    s+='<path d="M28 128 Q24 78 60 78 Q96 78 92 128 Z" fill="#57c98b"/>'
+      +'<path d="M38 92 Q60 80 82 92 Q70 88 60 88 Q50 88 38 92Z" fill="#8fe6b6" opacity=".7"/>'
+      +'<circle cx="50" cy="106" r="6" fill="#12331f"/><circle cx="72" cy="106" r="6" fill="#12331f"/>'
+      +'<circle cx="52" cy="104" r="2" fill="#fff"/><circle cx="74" cy="104" r="2" fill="#fff"/>'
+      +'<path d="M52 120 Q61 126 70 120" stroke="#12331f" stroke-width="2.5" fill="none"/>';
+  }else if(kind==='goblin'){
+    s+='<rect x="50" y="112" width="8" height="22" rx="4" fill="#4a7a3a"/><rect x="62" y="112" width="8" height="22" rx="4" fill="#3f6a31"/>'
+      +'<path d="M42 80 Q60 70 78 80 L74 116 Q60 122 46 116 Z" fill="#5f9a4a"/>'
+      +'<circle cx="60" cy="60" r="16" fill="#6fae55"/>'
+      +'<path d="M44 58 L30 48 L46 54 Z" fill="#6fae55"/><path d="M76 58 L90 48 L74 54 Z" fill="#6fae55"/>'
+      +'<circle cx="53" cy="60" r="4" fill="#ffd24a"/><circle cx="67" cy="60" r="4" fill="#ffd24a"/>'
+      +'<circle cx="53" cy="60" r="1.6" fill="#000"/><circle cx="67" cy="60" r="1.6" fill="#000"/>'
+      +'<path d="M52 70 L58 66 L64 70 L58 74 Z" fill="#2c421f"/>';
+  }else if(kind==='orc'){
+    s+='<rect x="46" y="112" width="11" height="24" rx="5" fill="#556b3a"/><rect x="63" y="112" width="11" height="24" rx="5" fill="#47592f"/>'
+      +'<path d="M34 74 Q60 60 86 74 L80 118 Q60 126 40 118 Z" fill="#79913f"/>'
+      +'<rect x="30" y="80" width="12" height="30" rx="6" fill="#79913f"/><rect x="78" y="80" width="12" height="30" rx="6" fill="#79913f"/>'
+      +'<circle cx="60" cy="52" r="19" fill="#8aa24d"/>'
+      +'<circle cx="52" cy="50" r="4" fill="#e05563"/><circle cx="68" cy="50" r="4" fill="#e05563"/>'
+      +'<path d="M50 64 L54 72 L52 62Z" fill="#fff"/><path d="M70 64 L66 72 L68 62Z" fill="#fff"/>'
+      +'<path d="M48 62 Q60 70 72 62" stroke="#33421c" stroke-width="3" fill="none"/>';
+  }else if(kind==='skeleton'){
+    s+='<rect x="50" y="112" width="8" height="24" rx="4" fill="#d9d4c4"/><rect x="62" y="112" width="8" height="24" rx="4" fill="#c4bfae"/>'
+      +'<path d="M46 78 L74 78 L72 116 L48 116 Z" fill="#e7e2d2"/>'
+      +'<rect x="48" y="84" width="24" height="3" fill="#b3ad9a"/><rect x="50" y="92" width="20" height="3" fill="#b3ad9a"/><rect x="52" y="100" width="16" height="3" fill="#b3ad9a"/>'
+      +'<circle cx="60" cy="58" r="17" fill="#f0ecdf"/>'
+      +'<ellipse cx="53" cy="58" rx="5" ry="6" fill="#1a1710"/><ellipse cx="67" cy="58" rx="5" ry="6" fill="#1a1710"/>'
+      +'<path d="M54 70 L58 70 L58 76Z" fill="#1a1710"/><rect x="52" y="68" width="16" height="3" fill="#c4bfae"/>';
+  }else{ /* dragon boss */
+    s='<svg viewBox="0 0 120 150"><ellipse cx="60" cy="142" rx="40" ry="8" fill="rgba(0,0,0,.4)"/>';
+    s+='<path d="M20 70 Q40 40 40 96 Z" fill="#7a2233"/><path d="M100 70 Q80 40 80 96 Z" fill="#7a2233"/>'
+      +'<path d="M38 78 Q60 62 82 78 L76 122 Q60 132 44 122 Z" fill="#b5303f"/>'
+      +'<path d="M46 86 Q60 78 74 86 Q68 84 60 84 Q52 84 46 86Z" fill="#e05563" opacity=".6"/>'
+      +'<circle cx="60" cy="50" r="20" fill="#c8394a"/>'
+      +'<path d="M48 34 L44 20 L54 32Z" fill="#7a2233"/><path d="M72 34 L76 20 L66 32Z" fill="#7a2233"/>'
+      +'<ellipse cx="52" cy="50" rx="5" ry="6" fill="#ffd24a"/><ellipse cx="68" cy="50" rx="5" ry="6" fill="#ffd24a"/>'
+      +'<circle cx="52" cy="51" r="2" fill="#000"/><circle cx="68" cy="51" r="2" fill="#000"/>'
+      +'<path d="M46 64 Q60 74 74 64 L70 68 Q60 76 50 68Z" fill="#5a121c"/>'
+      +'<path d="M50 66 L52 72 L54 66Z" fill="#fff"/><path d="M66 66 L68 72 L70 66Z" fill="#fff"/>';
+  }
+  s+='</svg>';
+  return s;
+}
+
+var ENEMY_KINDS=['slime','goblin','skeleton','orc'];
+var ENEMY_NAMES={slime:'슬라임',goblin:'고블린',skeleton:'해골 병사',orc:'오크 전사',dragon:'❖ 드래곤 ❖'};
+var STAGE_ZONES=['어두운 숲','버려진 갱도','안개 늪지','고대 성벽','용암 협곡','서리 봉우리','망자의 성','천공의 탑'];
+
+/* ---------------- Upgrade defs ---------------- */
+var UPGRADES=[
+  {id:'atk',   ic:'⚔️', name:'검술 수련',  desc:'공격력 +3',        base:12,  grow:1.15, val:3},
+  {id:'hp',    ic:'🛡️', name:'강철 갑옷',  desc:'최대 체력 +25',    base:16,  grow:1.14, val:25},
+  {id:'spd',   ic:'💨', name:'민첩 훈련',  desc:'공격 속도 +4%',    base:40,  grow:1.22, val:0.04},
+  {id:'crit',  ic:'🎯', name:'급소 간파',  desc:'치명타 확률 +2%',  base:80,  grow:1.30, val:0.02},
+  {id:'gold',  ic:'💰', name:'행운의 부적', desc:'골드 획득 +8%',   base:60,  grow:1.20, val:0.08}
+];
+
+/* ---------------- State ---------------- */
+var SAVE_KEY='idleKnightRPG.v1';
+var DEFAULT={
+  gold:0, stage:1, bestStage:1, souls:0, rebirths:0,
+  kills:0, killsThisStage:0, heroXp:0, heroLevel:1,
+  up:{atk:0,hp:0,spd:0,crit:0,gold:0},
+  lastSave:Date.now()
+};
+var S=load();
+
+function load(){
+  try{
+    var raw=localStorage.getItem(SAVE_KEY);
+    if(!raw) return JSON.parse(JSON.stringify(DEFAULT));
+    var d=JSON.parse(raw);
+    for(var k in DEFAULT){ if(!(k in d)) d[k]=DEFAULT[k]; }
+    for(var u in DEFAULT.up){ if(!(u in d.up)) d.up[u]=0; }
+    return d;
+  }catch(e){ return JSON.parse(JSON.stringify(DEFAULT)); }
+}
+function save(){ S.lastSave=Date.now(); try{localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){} }
+
+/* ---------------- Derived stats ---------------- */
+function soulMult(){ return 1 + S.souls*0.05; }
+function heroAtk(){ return Math.floor((5 + S.up.atk*3 + (S.heroLevel-1)*2) * soulMult()); }
+function heroMaxHp(){ return Math.floor(100 + S.up.hp*25 + (S.heroLevel-1)*15); }
+function heroInterval(){ return Math.max(280, 1000 * Math.pow(1-0.04,S.up.spd)); }
+function critChance(){ return Math.min(0.75, 0.05 + S.up.crit*0.02); }
+function goldMult(){ return (1 + S.up.gold*0.08) * soulMult(); }
+
+function monsterMaxHp(stage,isBoss){
+  var base = 20 * Math.pow(1.19, stage-1);
+  return Math.ceil(base * (isBoss?12:1));
+}
+function monsterAtk(stage,isBoss){
+  return Math.ceil(2.5 * Math.pow(1.13, stage-1) * (isBoss?1.8:1));
+}
+function goldReward(stage,isBoss){
+  return Math.ceil(6 * Math.pow(1.16, stage-1) * (isBoss?9:1) * goldMult());
+}
+function defOf(id){ if(typeof id==='object')id=id.id; for(var i=0;i<UPGRADES.length;i++)if(UPGRADES[i].id===id)return UPGRADES[i]; }
+function cost(id){ var d=defOf(id); return Math.ceil(d.base*Math.pow(d.grow,S.up[id])); }
+
+function xpToLevel(lv){ return Math.ceil(20*Math.pow(1.18,lv-1)); }
+
+/* prestige gain formula */
+function prestigeGain(){
+  if(S.bestStage<10) return 0;
+  return Math.floor(Math.pow(S.bestStage/8, 1.5));
+}
+
+/* ---------------- Battle runtime ---------------- */
+var battle={
+  heroHp:heroMaxHp(),
+  enemyKind:'slime', isBoss:false,
+  enemyHp:0, enemyMax:0,
+  bossTimeLeft:0,
+  heroCd:0, enemyCd:0,
+  heroDead:0, // respawn timer
+  enemyDead:false
+};
+
+function KILLS_PER_STAGE(){return 10;}
+var BOSS_TIME=30; // seconds
+
+function pickEnemyKind(stage){
+  return ENEMY_KINDS[(stage-1)%ENEMY_KINDS.length];
+}
+
+function spawnEnemy(){
+  var boss = (S.killsThisStage>=KILLS_PER_STAGE());
+  battle.isBoss=boss;
+  battle.enemyKind = boss?'dragon':pickEnemyKind(S.stage);
+  battle.enemyMax=monsterMaxHp(S.stage,boss);
+  battle.enemyHp=battle.enemyMax;
+  battle.enemyDead=false;
+  battle.enemyCd=800;
+  battle.bossTimeLeft = boss?BOSS_TIME:0;
+  renderEnemyArt();
+}
+
+function renderEnemyArt(){
+  var w=document.getElementById('enemyWrap');
+  w.innerHTML=enemySVG(battle.enemyKind);
+  w.classList.remove('spawning');void w.offsetWidth;w.classList.add('spawning');
+  document.getElementById('enemyName').textContent=ENEMY_NAMES[battle.enemyKind];
+  document.getElementById('arena').classList.toggle('boss',battle.isBoss);
+  document.getElementById('bossTimer').classList.toggle('show',battle.isBoss);
+}
+
+function floatNum(x,y,text,cls){
+  var el=document.createElement('div');
+  el.className='float '+cls; el.textContent=text;
+  el.style.left=x+'px'; el.style.top=y+'px';
+  document.getElementById('arena').appendChild(el);
+  setTimeout(function(){el.remove();},800);
+}
+
+function heroAttack(){
+  if(battle.enemyDead||battle.heroDead>0) return;
+  var wrap=document.getElementById('heroWrap');
+  wrap.classList.remove('attackHero');void wrap.offsetWidth;wrap.classList.add('attackHero');
+  var dmg=heroAtk(); var crit=Math.random()<critChance();
+  if(crit) dmg=Math.floor(dmg*2.2);
+  battle.enemyHp-=dmg;
+  var ew=document.getElementById('enemyWrap');
+  ew.classList.remove('hitFlash');void ew.offsetWidth;ew.classList.add('hitFlash');
+  floatNum(350,70,(crit?'⚡':'')+fmt(dmg),'heroDmg'+(crit?' crit':''));
+  if(battle.enemyHp<=0) killEnemy();
+}
+
+function enemyAttack(){
+  if(battle.enemyDead||battle.heroDead>0) return;
+  var wrap=document.getElementById('enemyWrap');
+  wrap.classList.remove('attackEnemy');void wrap.offsetWidth;wrap.classList.add('attackEnemy');
+  var dmg=monsterAtk(S.stage,battle.isBoss);
+  battle.heroHp-=dmg;
+  var hw=document.getElementById('heroWrap');
+  hw.classList.remove('hitFlash');void hw.offsetWidth;hw.classList.add('hitFlash');
+  floatNum(120,70,fmt(dmg),'enemyDmg');
+  if(battle.heroHp<=0){ heroDie(); }
+}
+
+function heroDie(){
+  battle.heroHp=0;
+  battle.heroDead=1800; // ms to respawn
+  var hw=document.getElementById('heroWrap');
+  hw.classList.add('dying');
+  toast('기사가 쓰러졌습니다… 곧 부활합니다');
+}
+function heroRespawn(){
+  battle.heroHp=heroMaxHp();
+  battle.heroDead=0;
+  var hw=document.getElementById('heroWrap');
+  hw.classList.remove('dying');
+  hw.innerHTML=heroSVG();
+  hw.classList.add('spawning');
+}
+
+function killEnemy(){
+  battle.enemyDead=true;
+  var ew=document.getElementById('enemyWrap');
+  ew.classList.add('dying');
+  var g=goldReward(S.stage,battle.isBoss);
+  S.gold+=g; S.kills++;
+  floatNum(320,44,'+'+fmt(g)+'💰','gold');
+  // xp
+  S.heroXp += battle.isBoss?8:2;
+  while(S.heroXp>=xpToLevel(S.heroLevel)){ S.heroXp-=xpToLevel(S.heroLevel); S.heroLevel++;
+    toast('⚔️ 기사 레벨 '+S.heroLevel+'!'); }
+
+  if(battle.isBoss){
+    // stage clear
+    S.stage++; S.killsThisStage=0;
+    if(S.stage>S.bestStage)S.bestStage=S.stage;
+    toast('🏆 스테이지 '+S.stage+' 진입!');
+    document.getElementById('bossTimer').classList.remove('show');
+  }else{
+    S.killsThisStage++;
+  }
+  setTimeout(spawnEnemy,360);
+  save();
+  refreshUI();
+}
+
+function bossFail(){
+  // retreat: reset boss counter, small pushback
+  toast('⏳ 드래곤 토벌 실패… 다시 도전!');
+  battle.enemyDead=true;
+  document.getElementById('enemyWrap').classList.add('dying');
+  setTimeout(spawnEnemy,360);
+}
+
+/* ---------------- Main loop ---------------- */
+var lastT=performance.now();
+function loop(now){
+  var dt=now-lastT; lastT=now;
+  if(dt>500)dt=500; // tab was inactive, clamp (offline handled separately)
+
+  if(battle.heroDead>0){
+    battle.heroDead-=dt;
+    if(battle.heroDead<=0) heroRespawn();
+  }else if(!battle.enemyDead){
+    battle.heroCd-=dt;
+    if(battle.heroCd<=0){ battle.heroCd=heroInterval(); heroAttack(); }
+    battle.enemyCd-=dt;
+    if(battle.enemyCd<=0){ battle.enemyCd=Math.max(600,1400*Math.pow(0.985,S.stage)); enemyAttack(); }
+    if(battle.isBoss && battle.bossTimeLeft>0){
+      battle.bossTimeLeft-=dt/1000;
+      if(battle.bossTimeLeft<=0){ bossFail(); }
+    }
+  }
+  renderBars();
+  requestAnimationFrame(loop);
+}
+
+/* ---------------- Rendering ---------------- */
+function fmt(n){
+  n=Math.floor(n);
+  if(n<1000)return ''+n;
+  var units=['','K','M','B','T','aa','bb','cc','dd'];
+  var i=0; while(n>=1000&&i<units.length-1){n/=1000;i++;}
+  return (n<10?n.toFixed(2):n<100?n.toFixed(1):Math.floor(n))+units[i];
+}
+
+function renderBars(){
+  var hpP=Math.max(0,battle.heroHp/heroMaxHp()*100);
+  document.getElementById('heroHp').style.width=hpP+'%';
+  document.getElementById('heroHpText').textContent=fmt(Math.max(0,battle.heroHp))+' / '+fmt(heroMaxHp());
+  var eP=Math.max(0,battle.enemyHp/battle.enemyMax*100);
+  document.getElementById('enemyHp').style.width=eP+'%';
+  document.getElementById('enemyHpText').textContent=fmt(Math.max(0,battle.enemyHp))+' / '+fmt(battle.enemyMax);
+  if(battle.isBoss){
+    document.getElementById('bossTimer').textContent='⏳ '+battle.bossTimeLeft.toFixed(1)+'s';
+  }
+}
+
+function refreshUI(){
+  document.getElementById('uiGold').textContent=fmt(S.gold);
+  document.getElementById('uiStage').textContent=S.stage;
+  document.getElementById('uiLevel').textContent=S.heroLevel;
+  document.getElementById('uiSoul').textContent=fmt(S.souls);
+  var zone=STAGE_ZONES[(S.stage-1)%STAGE_ZONES.length];
+  document.getElementById('stageTag').textContent='스테이지 '+S.stage+' · '+zone;
+  renderKillProg();
+  renderUpgrades();
+  renderPrestige();
+  renderInfo();
+}
+
+function renderKillProg(){
+  var box=document.getElementById('killprog');
+  var html='';
+  for(var i=0;i<KILLS_PER_STAGE();i++){
+    html+='<div class="pip'+(i<S.killsThisStage?' on':'')+'"></div>';
+  }
+  html+='<div class="pip boss'+(S.killsThisStage>=KILLS_PER_STAGE()?' on':'')+'">';
+  html+='</div>';
+  box.innerHTML=html;
+}
+
+function renderUpgrades(){
+  var box=document.getElementById('page-upgrades');
+  var html='';
+  for(var i=0;i<UPGRADES.length;i++){
+    var u=UPGRADES[i]; var c=cost(u.id); var afford=S.gold>=c;
+    html+='<div class="card">'
+      +'<div class="ic">'+u.ic+'</div>'
+      +'<div class="body"><div class="name">'+u.name+' <span class="lv">Lv.'+S.up[u.id]+'</span></div>'
+      +'<div class="desc">'+u.desc+'</div></div>'
+      +'<button class="buy" data-up="'+u.id+'"'+(afford?'':' disabled')+'>'+fmt(c)+'<small>골드</small></button>'
+      +'</div>';
+  }
+  box.innerHTML=html;
+  var btns=box.querySelectorAll('.buy');
+  for(var b=0;b<btns.length;b++){ btns[b].addEventListener('click',function(){ buyUpgrade(this.getAttribute('data-up')); }); }
+}
+
+function buyUpgrade(id){
+  var c=cost(id);
+  if(S.gold<c)return;
+  S.gold-=c; S.up[id]++;
+  save(); refreshUI();
+}
+
+function renderPrestige(){
+  var gain=prestigeGain();
+  document.getElementById('prestigeGain').textContent='+'+fmt(gain);
+  var btn=document.getElementById('prestigeBtn');
+  btn.disabled=(gain<=0);
+  document.getElementById('prestigeReq').textContent = gain>0
+     ? '지금 환생하면 영혼석 '+fmt(gain)+'개를 얻습니다.'
+     : '스테이지 10 이상부터 환생할 수 있습니다. (현재 최고 '+S.bestStage+')';
+  document.getElementById('soulHave').textContent=fmt(S.souls);
+  document.getElementById('soulBonus').textContent='+'+(S.souls*5)+'%';
+  document.getElementById('bestStage').textContent=S.bestStage;
+  document.getElementById('rebirthCnt').textContent=S.rebirths;
+}
+
+function renderInfo(){
+  document.getElementById('infoAtk').textContent=fmt(heroAtk());
+  document.getElementById('infoHp').textContent=fmt(heroMaxHp());
+  document.getElementById('infoSpd').textContent=(1000/heroInterval()).toFixed(2);
+  document.getElementById('infoCrit').textContent=Math.round(critChance()*100)+'%';
+  document.getElementById('infoGold').textContent='×'+goldMult().toFixed(2);
+  document.getElementById('infoKills').textContent=fmt(S.kills);
+}
+
+/* ---------------- Prestige action ---------------- */
+document.getElementById('prestigeBtn').addEventListener('click',function(){
+  var gain=prestigeGain(); if(gain<=0)return;
+  if(!confirm('환생하시겠습니까?\n영혼석 +'+gain+'개를 얻고 골드·강화·스테이지가 초기화됩니다.'))return;
+  S.souls+=gain; S.rebirths++;
+  S.gold=0; S.stage=1; S.killsThisStage=0; S.kills=S.kills;
+  S.heroXp=0; S.heroLevel=1;
+  S.up={atk:0,hp:0,spd:0,crit:0,gold:0};
+  battle.heroHp=heroMaxHp(); battle.heroDead=0;
+  spawnEnemy(); save(); refreshUI();
+  toast('✨ 환생 완료! 영혼석 +'+gain);
+  switchPage('upgrades');
+});
+
+/* ---------------- Offline reward ---------------- */
+function applyOffline(){
+  var now=Date.now();
+  var elapsed=(now-(S.lastSave||now))/1000; // sec
+  if(elapsed<60) return; // less than 1 min, skip
+  var cap=8*3600; if(elapsed>cap)elapsed=cap;
+  // estimate: kills per sec based on hero attack interval & average enemy hp at current stage
+  var eHp=monsterMaxHp(S.stage,false);
+  var dps=heroAtk()/(heroInterval()/1000);
+  var secPerKill=Math.max(0.5, eHp/Math.max(1,dps));
+  var kills=Math.floor(elapsed/secPerKill);
+  if(kills<=0)return;
+  var gold=Math.floor(kills*goldReward(S.stage,false)*0.6); // 60% efficiency offline
+  S.gold+=gold; S.kills+=kills;
+  var m=document.getElementById('offlineModal');
+  document.getElementById('offlineGold').textContent='+'+fmt(gold)+' 골드';
+  var hrs=Math.floor(elapsed/3600), mins=Math.floor((elapsed%3600)/60);
+  document.getElementById('offlineTime').textContent='자리를 비운 '+(hrs>0?hrs+'시간 ':'')+mins+'분 동안 몬스터 '+fmt(kills)+'마리 처치!';
+  m.classList.add('show');
+}
+document.getElementById('offlineClose').addEventListener('click',function(){
+  document.getElementById('offlineModal').classList.remove('show'); save();
+});
+
+/* ---------------- Tabs ---------------- */
+function switchPage(p){
+  var tabs=document.querySelectorAll('.tab');
+  for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].getAttribute('data-page')===p);
+  document.querySelectorAll('.page').forEach(function(pg){pg.classList.remove('active');});
+  document.getElementById('page-'+p).classList.add('active');
+}
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click',function(){switchPage(t.getAttribute('data-page'));});
+});
+
+/* ---------------- Reset ---------------- */
+document.getElementById('resetBtn').addEventListener('click',function(){
+  if(!confirm('정말 모든 진행을 삭제하고 처음부터 시작할까요?'))return;
+  localStorage.removeItem(SAVE_KEY);
+  location.reload();
+});
+
+/* ---------------- Toast ---------------- */
+var toastTimer=null;
+function toast(msg){
+  var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(function(){t.classList.remove('show');},1600);
+}
+
+/* ---------------- Boot ---------------- */
+document.getElementById('heroWrap').innerHTML=heroSVG();
+battle.heroHp=heroMaxHp();
+applyOffline();
+spawnEnemy();
+refreshUI();
+requestAnimationFrame(loop);
+setInterval(save,10000); // autosave
+window.addEventListener('beforeunload',save);
+
+})();
+</script>
+</body>
+</html>
