@@ -144,6 +144,14 @@
   .buymode button.on{background:var(--panel2);color:var(--ink);border-color:var(--accent);}
   .card.can{border-color:rgba(91,214,160,.55);}
   .card.can .buy{box-shadow:0 0 8px rgba(242,201,76,.4);}
+  .allBtn{width:100%;margin-bottom:10px;padding:12px;border:none;border-radius:11px;
+    font-weight:900;font-size:14px;cursor:pointer;color:#10231a;
+    background:linear-gradient(180deg,#8fe6b6,var(--good));
+    display:flex;align-items:center;justify-content:center;gap:9px;}
+  .allBtn:active{transform:translateY(1px);}
+  .allBtn:disabled{background:var(--panel2);color:#6c6486;cursor:not-allowed;}
+  .allBtn .mult{background:rgba(0,0,0,.2);padding:2px 10px;border-radius:20px;font-size:12px;font-weight:900;}
+  .allBtn:disabled .mult{background:rgba(255,255,255,.06);}
 
   .prestigeBox{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;}
   .prestigeBox h3{margin:0 0 6px;font-size:16px;color:var(--soul);}
@@ -606,12 +614,17 @@ function renderKillProg(){
 
 function renderUpgrades(){
   var box=document.getElementById('page-upgrades');
-  var modes=[['1','x1'],['10','x10'],['max','MAX']];
+  var modes=[['1','✕1'],['10','✕10'],['max','⚡MAX']];
   var html='<div class="buymode">';
   for(var m=0;m<modes.length;m++){
     html+='<button data-mode="'+modes[m][0]+'"'+((''+buyMode)===modes[m][0]?' class="on"':'')+'>'+modes[m][1]+'</button>';
   }
   html+='</div>';
+  var multLabel=(buyMode==='max')?'MAX':'✕'+buyMode;
+  var canAll=false;
+  for(var a=0;a<UPGRADES.length;a++){ if(buyCount(UPGRADES[a].id)>=1 && S.gold>=bulkCost(UPGRADES[a].id,buyCount(UPGRADES[a].id))){canAll=true;break;} }
+  html+='<button class="allBtn" id="upgradeAllBtn"'+(canAll?'':' disabled')+'>'
+    +'⚡ 능력치 전체 강화 <span class="mult">'+multLabel+'</span></button>';
   for(var i=0;i<UPGRADES.length;i++){
     var u=UPGRADES[i];
     var n=buyCount(u.id);
@@ -631,6 +644,8 @@ function renderUpgrades(){
   var mbtns=box.querySelectorAll('.buymode button');
   for(var k=0;k<mbtns.length;k++){ mbtns[k].addEventListener('click',function(){
     var v=this.getAttribute('data-mode'); buyMode=(v==='max')?'max':parseInt(v,10); renderUpgrades(); }); }
+  var allBtn=box.querySelector('#upgradeAllBtn');
+  if(allBtn) allBtn.addEventListener('click',upgradeAll);
   var btns=box.querySelectorAll('.buy');
   for(var b=0;b<btns.length;b++){ btns[b].addEventListener('click',function(){ buyUpgrade(this.getAttribute('data-up')); }); }
 }
@@ -642,6 +657,29 @@ function buyUpgrade(id){
   if(S.gold<c)return;
   S.gold-=c; S.up[id]+=n;
   save(); refreshUI();
+}
+
+/* upgrade every stat at once by the current multiplier */
+function upgradeAll(){
+  var boughtLv=0;
+  if(buyMode==='max'){
+    // repeatedly max each stat until no more gold anywhere (safety-capped)
+    for(var guard=0;guard<300;guard++){
+      var did=false;
+      for(var i=0;i<UPGRADES.length;i++){
+        var id=UPGRADES[i].id, n=maxAffordable(id);
+        if(n>=1){ var c=bulkCost(id,n); if(S.gold>=c){ S.gold-=c; S.up[id]+=n; boughtLv+=n; did=true; } }
+      }
+      if(!did) break;
+    }
+  }else{
+    for(var j=0;j<UPGRADES.length;j++){
+      var uid=UPGRADES[j].id, cc=bulkCost(uid,buyMode);
+      if(S.gold>=cc){ S.gold-=cc; S.up[uid]+=buyMode; boughtLv+=buyMode; }
+    }
+  }
+  if(boughtLv>0){ save(); refreshUI(); toast('⚡ 총 '+boughtLv+'레벨 강화!'); }
+  else toast('골드가 부족합니다');
 }
 
 function renderPrestige(){
