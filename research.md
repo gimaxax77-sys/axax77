@@ -51,3 +51,15 @@
   - 헤더/구조 통일: 프로젝트별 CLAUDE.md 구조는 의도적 → 강제 통일 시 정보 훼손, 유지.
   - 비기본 브랜치 fallback 일치화: 세션 미사용 브랜치라 실害 없음 → 대기.
   - 규칙7 저장소별 수정: Gim authored 규칙, 프로젝트 섹션에 실명령 있음 → 검증·보고만.
+
+## 2026-07-13 — 추가 게임 에셋 심층 조사
+- 요청: 더 활용할 수 있는 게임 에셋 심층 조사·정리·브리핑.
+- 결과(핵심):
+  1. Quaternius(CC0 3D 몬스터·캐릭터, 70팩 2500+, 애니 내장) → 오늘 3D→2D 파이프라인에 그대로. 몬스터도 무료·일관 스타일.
+  2. Kenney(CC0 6만+): UI(430)·UI Audio·폰트·아이콘·2D/3D. 출처표기 불필요.
+  3. KayKit Skeletons/Dungeon(CC0) → 적, KayKit 애니 공유(동일 파이프라인).
+  4. 아이콘: game-icons.net(4000+, CC BY=출처표기). 오디오: Kenney Audio·Freesound(CC0/혼합)·Incompetech(CC BY 음악)·OpenGameArt CC0.
+- 라이선스: CC0=출처표기 불필요(KayKit/Quaternius/Kenney) 우선. CC BY=크레딧 화면 관리 필요(game-icons/Incompetech).
+- 파이프라인 확장: render_sprites.py에 Quaternius 몬스터 경로만 추가하면 배치 렌더 가능.
+- 우선순위: (1)Quaternius 몬스터→파이프라인 테스트 (2)Kenney UI/Audio (3)game-icons 아이콘 (4)Incompetech/Freesound BGM·SFX.
+- 후속 제안: 게임팩(axdata_01) docs/ASSET_SOURCES.md로 정식 문서화 가능(지시 시).
