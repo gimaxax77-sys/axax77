@@ -37,3 +37,17 @@
   5. 정확성: 규칙7 테스트명령 node --test system/test/*.test.mjs 가 저장소마다 실제와 다를 수 있음(axax77 정적 HTML 등).
 - 양호: axax77/03/05 순수 규칙 간결. 프로젝트 개요 자체는 유지 가치.
 - 후속(대기): axdata_09/gax 상태·백로그 이전, 규칙 통합, 헤더 통일, 테스트명령 검증 — Gim 지시 시 실행.
+
+## 2026-07-13 — CLAUDE.md 정리 실행(전부 진행)
+- 요청: 점검에서 나온 개선안 전부 실행.
+- 실행함:
+  - axdata_09 CLAUDE.md 슬림화 71→59줄(현황·주요API·백로그 → research.md 이전).
+  - gax CLAUDE.md 슬림화 59→51줄(현재 상태·백로그 → research.md 이전).
+- 검증함(테스트 명령 실제):
+  - axdata_01 npm test(node --test system/test)·gax npm test(node test/*.js)·axdata_09 python -m pytest.
+  - axax77/03/05/07 정식 테스트 없음(정적/Next.js/빈저장소). 규칙7 예시명령은 프로젝트 섹션이 override.
+- 판단상 보류(이유):
+  - 규칙 중복 통합: 9원칙6(계획·노트) vs 답변·기록2(research 기록)은 보완 관계 → 통합 안 함.
+  - 헤더/구조 통일: 프로젝트별 CLAUDE.md 구조는 의도적 → 강제 통일 시 정보 훼손, 유지.
+  - 비기본 브랜치 fallback 일치화: 세션 미사용 브랜치라 실害 없음 → 대기.
+  - 규칙7 저장소별 수정: Gim authored 규칙, 프로젝트 섹션에 실명령 있음 → 검증·보고만.
