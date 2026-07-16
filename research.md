@@ -63,3 +63,14 @@
 - 파이프라인 확장: render_sprites.py에 Quaternius 몬스터 경로만 추가하면 배치 렌더 가능.
 - 우선순위: (1)Quaternius 몬스터→파이프라인 테스트 (2)Kenney UI/Audio (3)game-icons 아이콘 (4)Incompetech/Freesound BGM·SFX.
 - 후속 제안: 게임팩(axdata_01) docs/ASSET_SOURCES.md로 정식 문서화 가능(지시 시).
+
+## 2026-07-16 — axdata_09 치비/무기제거 프롬프트 미반영 확인 + 데스크탑 수정 목록
+- 요청: 이전에 수정했던 axdata_09 프롬프트(치비·무기없음)가 반영됐는지 확인 → 데스크탑에서 직접 고칠 테니 내용 정리.
+- 확인(GitHub 직접): axdata_09의 main·기본브랜치(claude/work-prep-status-check-axn3lj) 둘 다 **옛날 값**. 이전 세션 편집이 push 안 됨 → 데스크탑 pull에도 안 내려왔음. 이것이 "여전히 무기 들고 있음"의 원인.
+- 수정 목록(데스크탑에서 4개 파일):
+  1. app/models.py (GenBase): art_style "semi-realistic digital painting" → "cute big head chibi 3D game render, glossy, vibrant colors"; keywords "" → "big head chibi, no weapon, empty hands, no helmet, face and hair visible, full body".
+  2. app/static/index.html: art_style input value 를 위 치비 문구로; keywords input 에 같은 문구를 value 로 추가(현재 value 없음, placeholder만).
+  3. app/services/asset_catalog.py (ART_STYLES): 맨 앞에 "cute big head chibi 3D game render, glossy, vibrant colors" 추가(드롭다운 기본값 일치).
+  4. app/services/gpt_service.py (SYSTEM_PROMPT) — **핵심**: "Describe the outfit AND any weapon concretely..." 문장을 "기본적으로 무기 없음·빈손·팔 내림, 키워드가 명시할 때만 무기; 얼굴 가리는 헬멧 금지"로 교체. 이 문장이 GPT가 visual_core에 무기를 써넣게 하던 근원.
+- 근거: 무기의 실제 출처는 SYSTEM_PROMPT→visual_core. models/index/catalog는 치비 룩·기본값 프리필용. 4번이 무기 제거의 결정타.
+- 후속: 데스크탑 수정 후 서버 재시작→Ctrl+F5→kael 재생성으로 무기 없음·치비 확인.
