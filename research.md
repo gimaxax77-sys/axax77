@@ -74,3 +74,13 @@
   4. app/services/gpt_service.py (SYSTEM_PROMPT) — **핵심**: "Describe the outfit AND any weapon concretely..." 문장을 "기본적으로 무기 없음·빈손·팔 내림, 키워드가 명시할 때만 무기; 얼굴 가리는 헬멧 금지"로 교체. 이 문장이 GPT가 visual_core에 무기를 써넣게 하던 근원.
 - 근거: 무기의 실제 출처는 SYSTEM_PROMPT→visual_core. models/index/catalog는 치비 룩·기본값 프리필용. 4번이 무기 제거의 결정타.
 - 후속: 데스크탑 수정 후 서버 재시작→Ctrl+F5→kael 재생성으로 무기 없음·치비 확인.
+
+## 2026-07-23 — 모바일 게임 엔진 심층 웹 조사(엔진별 장단점·초보접근성·운영효율·유지비·상용현황)
+- 요청: 모바일 게임 엔진 종류/장단점/초보 접근성/운영관리 효율/유지비용/상용 사용현황을 웹으로 깊이 조사해 모바일에서 보기 좋게 브리핑.
+- 결론(Gim 상황=혼자·초보·2D 치비 방치형, 현재 HTML/JS): 1순위 Godot, 2순위 Cocos, 웹 유지안 Phaser, 미래확장 Unity. Unreal은 부적합.
+- 초보 접근성: Godot⭐5(노드·드래그드롭·경량) > Phaser/Cocos Creator⭐4 > Unity⭐3 > Unreal⭐2.
+- 운영·관리 효율: Unity⭐5(에셋스토어·플러그인·수익화·인력) > Cocos/Unreal⭐4 > Godot⭐3(없는건 직접 제작).
+- 유지비용: Godot/Cocos/Phaser=무료(로열티0). Unity=매출 $200k 미만 무료, 초과 시 Pro 연 $2,200/석. Unreal=평생매출 $1M 초과분 5% 로열티. 일반 인디 운영비는 엔진무관 월 $1,000~3,000. Unity Runtime Fee는 2024-09 취소됨.
+- 상용 현황(점유): Unity 41~48%(모바일 상위 70%), Cocos 모바일 ~20%(아시아 강세), Unreal 상승세, Godot 최고속 성장(GitHub 스타 2.5만→10만+). 상위5(Unity·Unreal·Cocos·GameMaker·Construct)=68.4%.
+- 출처: appradar, sensortower 2025 Big Game Engines Report, astuteanalytica, unity.com pricing, rocketbrush(godot vs unity), gamedesignskills(cocos vs godot), logrocket(html5 engines), tech-insider.
+- 후속 제안: Godot 전환 시 현 치비 아트·33캐릭터 파이프라인(axdata_05/09 산출물)을 그대로 임포트 가능. 웹 유지 시 Phaser로 idle-rpg.html 자산 계승.
